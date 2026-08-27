@@ -1,0 +1,286 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#f4f6f8">
+  <title>我的外置大脑</title>
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="icon" href="./icons/icon-192.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <div>
+        <p class="eyebrow" id="todayDateText"></p>
+        <h1>我的外置大脑</h1>
+      </div>
+      <div class="topbar-actions">
+        <button class="icon-button" id="openSearchBtn" aria-label="打开搜索">搜索</button>
+        <button class="icon-button" id="openSettingsBtn" aria-label="打开设置">设置</button>
+      </div>
+    </header>
+
+    <main class="main-content">
+      <section class="screen is-active" data-screen="today">
+        <div class="stack">
+          <article class="card emotion-card" id="emotionCard"></article>
+          <article class="card" id="todayBrowserCard"></article>
+          <article class="card" id="todayPanoramaCard"></article>
+          <article class="card" id="reviewStatusCard"></article>
+          <article class="card" id="todayQuickHabits"></article>
+          <article class="card">
+            <div class="section-head">
+              <h2>今日记录</h2>
+              <button class="text-button" data-open-modal="record">新增</button>
+            </div>
+            <div id="todayTimeline" class="timeline"></div>
+          </article>
+        </div>
+      </section>
+
+      <section class="screen" data-screen="habits">
+        <div class="stack">
+          <article class="card" id="habitOverviewCard"></article>
+          <article class="card">
+            <div class="section-head">
+              <h2>习惯打卡</h2>
+              <button class="text-button" data-open-modal="habit">新增习惯</button>
+            </div>
+            <div id="habitList" class="list"></div>
+          </article>
+        </div>
+      </section>
+
+      <section class="screen" data-screen="contacts">
+        <div class="stack">
+          <article class="card">
+            <div class="section-head">
+              <h2>人际列表</h2>
+              <button class="text-button" data-open-modal="contact">新增人物</button>
+            </div>
+            <div id="contactList" class="list"></div>
+          </article>
+        </div>
+      </section>
+
+      <section class="screen" data-screen="projects">
+        <div class="stack">
+          <article class="card" id="projectFilterCard"></article>
+          <article class="card">
+            <div class="section-head">
+              <h2>近日待办</h2>
+              <button class="text-button" data-open-modal="task">新增任务</button>
+            </div>
+            <div id="dueTodayList" class="list"></div>
+          </article>
+          <article class="card">
+            <div class="section-head">
+              <h2>事件包</h2>
+              <button class="text-button" data-open-modal="bundle">新增事件包</button>
+            </div>
+            <div id="bundleList" class="list"></div>
+          </article>
+          <article class="card">
+            <div class="section-head">
+              <h2>长期项目</h2>
+              <button class="text-button" data-open-modal="project">新增项目</button>
+            </div>
+            <div id="projectList" class="list"></div>
+          </article>
+          <article class="card" id="projectDetailCard"></article>
+        </div>
+      </section>
+
+      <section class="screen" data-screen="knowledge">
+        <div class="stack">
+          <article class="card" id="knowledgeFilterCard"></article>
+          <article class="card">
+            <div class="section-head">
+              <h2>经验库</h2>
+              <button class="text-button" data-open-modal="knowledge">新增经验</button>
+            </div>
+            <div id="knowledgeList" class="list"></div>
+          </article>
+        </div>
+      </section>
+
+      <section class="screen" data-screen="reviews">
+        <div class="stack">
+          <article class="card" id="reviewInsightsCard"></article>
+          <article class="card" id="statsVisualCard"></article>
+          <article class="card" id="reviewPressureCard"></article>
+          <article class="card" id="reviewLinkCard"></article>
+          <article class="card">
+            <div class="section-head">
+              <h2>复盘待办</h2>
+              <button class="text-button" id="generateDailyReviewBtn">生成今日小结</button>
+            </div>
+            <div id="reviewPromptList" class="prompt-list"></div>
+          </article>
+          <article class="card">
+            <div class="section-head">
+              <h2>复盘历史</h2>
+              <button class="text-button" id="exportMarkdownBtn">导出 Markdown</button>
+            </div>
+            <div id="reviewHistoryList" class="list"></div>
+          </article>
+        </div>
+      </section>
+    </main>
+
+    <nav class="bottom-nav" aria-label="主导航">
+      <button class="nav-item is-active" data-screen-target="today">今日</button>
+      <button class="nav-item" data-screen-target="habits">习惯</button>
+      <button class="nav-item" data-screen-target="contacts">人际</button>
+      <button class="nav-item" data-screen-target="projects">项目</button>
+      <button class="nav-item" data-screen-target="knowledge">经验</button>
+      <button class="nav-item" data-screen-target="reviews">复盘</button>
+    </nav>
+
+    <button class="fab" id="fabBtn" aria-label="快速新增">＋</button>
+  </div>
+
+  <dialog id="entryDialog" class="dialog">
+    <form class="dialog-panel" id="entryForm">
+      <div class="dialog-head">
+        <h2 id="dialogTitle"></h2>
+        <button type="button" class="icon-button ghost" data-close-dialog="entry">关闭</button>
+      </div>
+      <div id="dialogFields" class="dialog-fields"></div>
+      <menu class="dialog-actions">
+        <button type="button" class="secondary-button" data-close-dialog="entry">取消</button>
+        <button type="button" class="primary-button" id="dialogSubmitBtn">保存</button>
+      </menu>
+    </form>
+  </dialog>
+
+  <dialog id="settingsDialog" class="dialog">
+    <form class="dialog-panel" id="settingsForm">
+      <div class="dialog-head">
+        <h2>设置与数据</h2>
+        <button type="button" class="icon-button ghost" data-close-dialog="settings">关闭</button>
+      </div>
+      <div class="dialog-fields">
+        <label>
+          <span>每日提醒时间</span>
+          <input id="dailyReminderTime" type="time">
+        </label>
+        <label>
+          <span>每周提醒时间</span>
+          <input id="weeklyReminderTime" type="time">
+        </label>
+        <label>
+          <span>强制复盘阈值（天）</span>
+          <input id="forcedReviewDays" type="number" min="1" max="90">
+        </label>
+        <label>
+          <span>自动备份阈值（天）</span>
+          <input id="autoBackupDays" type="number" min="1" max="30">
+        </label>
+        <label>
+          <span>每日复盘题目（每行一题）</span>
+          <textarea id="dailyTemplateInput"></textarea>
+        </label>
+        <label>
+          <span>每周复盘题目（每行一题）</span>
+          <textarea id="weeklyTemplateInput"></textarea>
+        </label>
+        <label>
+          <span>每月复盘题目（每行一题）</span>
+          <textarea id="monthlyTemplateInput"></textarea>
+        </label>
+        <label>
+          <span>季度复盘题目（每行一题）</span>
+          <textarea id="quarterlyTemplateInput"></textarea>
+        </label>
+        <label>
+          <span>年度复盘题目（每行一题）</span>
+          <textarea id="yearlyTemplateInput"></textarea>
+        </label>
+        <div class="button-row">
+          <button type="button" class="secondary-button" id="resetTemplatesBtn">恢复默认题目</button>
+        </div>
+        <div class="button-row">
+          <button type="button" class="secondary-button" id="enableNotificationBtn">启用通知权限</button>
+          <button type="button" class="secondary-button" id="backupNowBtn">立即备份 JSON</button>
+        </div>
+        <div class="button-row">
+          <button type="button" class="secondary-button" id="exportCsvBtn">导出 CSV</button>
+          <label class="file-button">
+            <input id="restoreInput" type="file" accept=".json">
+            <span>从备份恢复</span>
+          </label>
+        </div>
+        <div class="button-row">
+          <button type="button" class="secondary-button" id="restoreLastDeletedBtn">恢复最近删除</button>
+          <button type="button" class="secondary-button" id="clearTrashBtn">清空回收站</button>
+        </div>
+        <p class="note" id="settingsNote">所有数据默认保存在本机 IndexedDB。</p>
+        <div id="backupLogList" class="list"></div>
+      </div>
+      <menu class="dialog-actions">
+        <button type="button" class="primary-button" id="saveSettingsBtn">保存设置</button>
+      </menu>
+    </form>
+  </dialog>
+
+  <dialog id="searchDialog" class="dialog">
+    <form class="dialog-panel" id="searchForm">
+      <div class="dialog-head">
+        <h2>全局搜索</h2>
+        <button type="button" class="icon-button ghost" data-close-dialog="search">关闭</button>
+      </div>
+      <div class="dialog-fields">
+        <label>
+          <span>关键词</span>
+          <input id="searchInput" type="search" placeholder="搜索记录、任务、人物、经验">
+        </label>
+        <label>
+          <span>按日期查看</span>
+          <input id="searchDateInput" type="date">
+        </label>
+        <div id="searchResults" class="list"></div>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="forcedReviewDialog" class="dialog">
+    <form class="dialog-panel" id="forcedReviewForm">
+      <div class="dialog-head">
+        <h2>最小复盘</h2>
+        <button type="button" class="icon-button ghost" data-close-dialog="forced-review">关闭</button>
+      </div>
+      <div class="dialog-fields">
+        <p class="note">你已经进入强制复盘档。先用最短版本把状态收回来，或者写下这次跳过原因。</p>
+        <label><span>最近一直没复盘的原因</span><textarea id="forcedReasonInput" placeholder="例如：这周节奏乱了，一直没打开页面"></textarea></label>
+        <label><span>这段时间最重要的变化</span><textarea id="forcedChangeInput" placeholder="发生了什么？"></textarea></label>
+        <label><span>接下来最重要的一件事</span><textarea id="forcedNextInput" placeholder="下一步要抓什么？"></textarea></label>
+      </div>
+      <menu class="dialog-actions">
+        <button type="button" class="secondary-button" id="forcedSkipBtn">只记录原因</button>
+        <button type="button" class="primary-button" id="forcedSubmitBtn">完成最小复盘</button>
+      </menu>
+    </form>
+  </dialog>
+
+  <div id="fabMenu" class="fab-menu hidden">
+    <button data-open-modal="record">记录</button>
+    <button data-open-modal="habit">习惯</button>
+    <button data-open-modal="task">待办</button>
+    <button data-open-modal="knowledge">经验</button>
+  </div>
+
+  <template id="emptyStateTemplate">
+    <div class="empty-state">
+      <p class="empty-title">这里还没有内容</p>
+      <p class="empty-text">先加第一条，系统就会开始为你积累复盘素材。</p>
+    </div>
+  </template>
+
+  <div id="toast" class="toast hidden" aria-live="polite"></div>
+
+  <script src="./app.js" defer></script>
+</body>
+</html>

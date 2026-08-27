@@ -1,0 +1,24 @@
+{
+  "name": "我的外置大脑",
+  "short_name": "外置大脑",
+  "description": "离线优先的个人成长操作系统，围绕记录、复盘与行动构建闭环。",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#f4f6f8",
+  "theme_color": "#f4f6f8",
+  "lang": "zh-CN",
+  "icons": [
+    {
+      "src": "./icons/icon-192.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "./icons/icon-512.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
