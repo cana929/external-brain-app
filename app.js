@@ -9,13 +9,16 @@ const STORE_NAME = "appState";
 const STATE_KEY = "singleton";
 
 const emotionOptions = [
-  { value: 1, label: "崩溃", color: "#A9B8C8", face: "🥲" },
-  { value: 2, label: "失控", color: "#E8A87C", face: "😤" },
-  { value: 3, label: "低落", color: "#B9A7C9", face: "😔" },
-  { value: 4, label: "平和", color: "#A9C8B9", face: "🙂" },
-  { value: 5, label: "愉悦", color: "#E8D58A", face: "😊" },
-  { value: 6, label: "狂喜", color: "#E8A0A8", face: "🤩" }
+  { value: 1, label: "狂喜", color: "#F7A8B8", img: "./assets/emotion-1.jpg" },
+  { value: 2, label: "愉悦", color: "#F6C98A", img: "./assets/emotion-2.jpg" },
+  { value: 3, label: "疲惫", color: "#A9C8B9", img: "./assets/emotion-3.jpg" },
+  { value: 4, label: "生气", color: "#E89888", img: "./assets/emotion-4.jpg" },
+  { value: 5, label: "伤心", color: "#9FB8D8", img: "./assets/emotion-5.jpg" },
+  { value: 6, label: "绝望", color: "#B9A7C9", img: "./assets/emotion-6.jpg" }
 ];
+
+/* v4：旧情绪体系（1-6 = 崩溃/失控/低落/平和/愉悦/狂喜）→ 新体系（1-6 = 狂喜/愉悦/疲惫/生气/伤心/绝望）语义映射 */
+const LEGACY_EMOTION_MAP = { 1: 6, 2: 4, 3: 5, 4: 2, 5: 2, 6: 1 };
 
 const BOARD_DEFS = [
   { key: "study", label: "学习", icon: "📚" },
@@ -58,7 +61,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
 function createDefaultState() {
   return {
-    schemaVersion: 4,
+    schemaVersion: 5,
     meta: {
       lastBackupAt: "",
       installedAt: new Date().toISOString()
@@ -91,7 +94,7 @@ function normalizeState(data) {
   const normalized = {
     ...defaults,
     ...data,
-    schemaVersion: Math.max(4, Number(data?.schemaVersion || 1)),
+    schemaVersion: Math.max(5, Number(data?.schemaVersion || 1)),
     settings: { ...defaults.settings, ...(data.settings || {}) },
     meta: { ...defaults.meta, ...(data.meta || {}) }
   };
@@ -206,6 +209,14 @@ function normalizeState(data) {
     other: normalizeEntityList(normalized.boards?.other, { updatedAt: "", deletedAt: "", version: 1, done: false, content: "" })
   };
   normalized.experienceCategories = buildExperienceCategories(normalized.knowledge, normalized.experienceCategories);
+
+  /* v4 迁移：旧情绪体系（schemaVersion < 5 时，1-6=崩溃/失控/低落/平和/愉悦/狂喜）映射到新 6 情绪 */
+  if (Number(data?.schemaVersion || 1) < 5) {
+    normalized.emotions = normalized.emotions.map((item) => ({
+      ...item,
+      level: LEGACY_EMOTION_MAP[item.level] ?? item.level
+    }));
+  }
 
   return normalized;
 }
@@ -1058,7 +1069,7 @@ function renderWeeklyReview() {
         <div class="weekly-date">
           <span class="weekly-daynum">${formatShortDate(date)}</span>
           <span class="weekly-weekday">${weekdayLabelOf(date)}</span>
-          ${emotion ? `<span class="weekly-face">${emotion.face}</span>` : ""}
+          ${emotion ? `<img class="weekly-face" src="${emotion.img}" alt="${emotion.label}">` : ""}
         </div>
         <div class="weekly-body">
           ${records.length ? records.map((record) => `
@@ -1074,7 +1085,7 @@ function renderWeeklyReview() {
 
   nodes.weeklyReviewCard.innerHTML = `
     <div class="section-head">
-      <h2>周度复盘</h2>
+      <h2>周度复盘 <img class="mascot-inline" src="./assets/review-mascot.jpg" alt="复盘"></h2>
       <span class="pill">最近 7 天</span>
     </div>
     <div class="weekly-week-range">${weekLabel} · ${weekdayLabelOf(today)}</div>
@@ -1136,7 +1147,7 @@ function renderReviewCalendar() {
     cells.push(`
       <button class="cal-cell ${isToday ? "is-today" : ""} ${isSelected ? "is-selected" : ""} ${records.length ? "has-content" : ""}" data-cal-date="${date}" ${style}>
         <span class="cal-day-num">${day}</span>
-        ${emotion ? `<span class="cal-face">${emotion.face}</span>` : ""}
+        ${emotion ? `<img class="cal-face" src="${emotion.img}" alt="${emotion.label}">` : ""}
         <span class="cal-snippet">${records.length ? `${records.length}条${records[0].content ? " · " + truncate(records[0].content, 8) : ""}` : ""}</span>
       </button>
     `);
@@ -1202,7 +1213,7 @@ function renderReviewDay() {
     <div class="review-day-row">
       <div class="detail-tile">
         <span class="item-meta">情绪</span>
-        <strong>${emotion ? `${emotion.face} ${emotion.label}` : "未记录"}</strong>
+        <strong>${emotion ? `<img class="inline-face" src="${emotion.img}" alt=""> ${emotion.label}` : "未记录"}</strong>
         <p class="item-meta">${emotion?.note || "当天还没有情绪备注"}</p>
       </div>
       <div class="detail-tile">
@@ -1269,6 +1280,7 @@ function truncate(text, length) {
 
 function renderAll() {
   nodes.todayDateText.textContent = formatLongDate(new Date());
+  renderTodayHero();
   renderEmotionCard();
   renderTodayBrowser();
   renderDayPanorama();
@@ -1279,42 +1291,77 @@ function renderAll() {
   renderHabits();
   renderKnowledge();
   renderContacts();
+  renderContactsMascot();
+}
+
+function renderTodayHero() {
+  const now = new Date();
+  const hour = now.getHours();
+  const greet = hour < 6 ? "夜深了" : hour < 12 ? "早上好" : hour < 18 ? "下午好" : "晚上好";
+  nodes.todayHeroCard.innerHTML = `
+    <div class="hero-inner">
+      <div class="hero-text">
+        <span class="pill">${greet} · ${weekdayLabelOf(localDateString())}</span>
+        <h2>把不起眼的小事，攒成喜欢的日子。</h2>
+        <p class="subtle">一天一点点，慢慢积攒。今天也好好过。</p>
+      </div>
+      <img class="hero-cat" src="./assets/cat-mood.jpg" alt="猫咪心情">
+    </div>
+  `;
 }
 
 function renderEmotionCard() {
   const todayEmotion = getEmotionByDate(app.selectedDate);
-  const emotion = todayEmotion || emotionOptions[3];
+  const emotion = todayEmotion || emotionOptions[1];
   const trend = getEmotionTrend(app.emotionWindowDays);
-  nodes.emotionCard.style.background = `linear-gradient(135deg, ${emotion.color}59 0%, rgba(14,19,36,.92) 62%)`;
+  const isToday = app.selectedDate === localDateString();
   nodes.emotionCard.innerHTML = `
     <div class="section-head">
-      <h2>${app.selectedDate === localDateString() ? "今日情绪" : "当天情绪"}</h2>
+      <h2>${isToday ? "今日情绪" : "当天情绪"}</h2>
       <div class="inline-actions tight">
         <button class="chip-button ${app.emotionWindowDays === 7 ? "star-button is-active" : ""}" data-emotion-window="7">7天</button>
         <button class="chip-button ${app.emotionWindowDays === 30 ? "star-button is-active" : ""}" data-emotion-window="30">30天</button>
-        <button class="text-button" id="editEmotionBtn">更新</button>
       </div>
     </div>
     <div class="emotion-top">
-      <div class="emotion-face">${emotion.face}</div>
+      <img class="emotion-face" src="${emotion.img}" alt="${emotion.label}">
       <div class="emotion-meta">
         <strong>${emotion.label}</strong>
-        <span class="subtle">${todayEmotion ? "已记录当天心情" : "还没写，先给今天一个表情。"}</span>
+        <span class="subtle">${todayEmotion ? "已记录当天心情" : "点下面的小表情，记下今天的心情～"}</span>
       </div>
+    </div>
+    <div class="emotion-picker">
+      ${emotionOptions.map((option) => `
+        <button class="emotion-pick ${option.value === emotion.value ? "is-active" : ""}" data-emotion-level="${option.value}" title="${option.label}">
+          <img src="${option.img}" alt="${option.label}">
+          <span>${option.label}</span>
+        </button>
+      `).join("")}
     </div>
     <p class="emotion-note">${todayEmotion?.note || "记录今天的心情，会自动进入你的复盘日历。"}</p>
     <div class="section-block">
       ${renderBarRows(`最近 ${app.emotionWindowDays} 天情绪分布`, emotionOptions.map((option) => ({
-        label: `${option.face} ${option.label}`,
+        label: `<img class="bar-face" src="${option.img}" alt=""> ${option.label}`,
         value: trend.counts[option.value] || 0
       })))}
     </div>
   `;
-  document.querySelector("#editEmotionBtn").addEventListener("click", () => openEntryModal("emotion", todayEmotion || { date: app.selectedDate }));
   nodes.emotionCard.querySelectorAll("[data-emotion-window]").forEach((button) => {
     button.addEventListener("click", () => {
       app.emotionWindowDays = Number(button.dataset.emotionWindow);
       renderEmotionCard();
+    });
+  });
+  nodes.emotionCard.querySelectorAll("[data-emotion-level]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const level = Number(button.dataset.emotionLevel);
+      const targetDate = app.selectedDate;
+      const existing = app.state.emotions.find((item) => item.date === targetDate);
+      const payload = { date: targetDate, level, note: existing?.note || "" };
+      app.state.emotions = app.state.emotions.filter((item) => item.date !== targetDate).concat(payload);
+      saveState();
+      showToast(`已记下今天的心情：${emotionOptions.find((option) => option.value === level).label}`);
+      renderAll();
     });
   });
 }
@@ -1340,7 +1387,7 @@ function renderTodayBrowser() {
           return `
             <button class="history-day" data-jump-date="${date}">
               <span class="timestamp">${date.slice(5)}</span>
-              <strong>${emotion ? emotion.face : "•"}</strong>
+              <strong>${emotion ? `<img class="mini-face" src="${emotion.img}" alt="">` : "•"}</strong>
               <span class="timestamp">${count} 条</span>
             </button>
           `;
@@ -1551,7 +1598,7 @@ function renderHabitOverview() {
   const [year, month] = monthKey.split("-").map(Number);
   nodes.habitOverviewCard.innerHTML = `
     <div class="section-head">
-      <h2>习惯概览</h2>
+      <h2>习惯概览 <img class="mascot-inline" src="./assets/habit-mascot.jpg" alt="打卡"></h2>
       ${isCurrentMonth ? "" : `<button class="text-button" id="habitBackTodayBtn">回到本月</button>`}
     </div>
     <div class="month-switcher">
@@ -1763,8 +1810,7 @@ async function handleKnowledgeManage(action, knowledgeId) {
 /* ============ 人际 ============ */
 
 function renderContacts() {
-  renderCollection(nodes.contactList, app.state.contacts, (contact) => `
-    <div class="list-item">
+  renderCollection(nodes.contactList, app.state.contacts, (contact) => `    <div class="list-item">
       <div class="list-item-head">
         <strong>${escapeHtml(contact.name)}</strong>
         <span class="pill">${escapeHtml(contact.relation || "未分类")}</span>
@@ -1792,6 +1838,18 @@ function renderContacts() {
   nodes.contactList.querySelectorAll("[data-contact-manage]").forEach((button) => {
     button.addEventListener("click", () => handleContactManage(button.dataset.contactManage, button.dataset.contactId));
   });
+}
+
+function renderContactsMascot() {
+  nodes.contactsMascotCard.innerHTML = `
+    <div class="mascot-banner-inner">
+      <img src="./assets/people-mascot.jpg" alt="人际">
+      <div class="mascot-banner-text">
+        <h3>把重要的人，放在心上。</h3>
+        <p class="subtle">记录每一个值得惦记的名字与故事。</p>
+      </div>
+    </div>
+  `;
 }
 
 async function handleContactManage(action, contactId) {
@@ -1908,7 +1966,7 @@ function openEntryModal(type, preset = {}) {
         <input type="hidden" name="date" value="${preset.date || app.selectedDate}">
         <label><span>心情等级</span>
           <select name="level">
-            ${emotionOptions.map((item) => `<option value="${item.value}" ${(Number(preset.level) || 4) === item.value ? "selected" : ""}>${item.label}</option>`).join("")}
+            ${emotionOptions.map((item) => `<option value="${item.value}" ${(Number(preset.level) || 2) === item.value ? "selected" : ""}>${item.label}</option>`).join("")}
           </select>
         </label>
         <label><span>一句话备注</span><textarea name="note" placeholder="今天发生了什么？">${escapeHtml(preset.note || "")}</textarea></label>
@@ -2433,6 +2491,7 @@ function handleSearchOpen(type, id) {
 function cacheNodes() {
   Object.assign(nodes, {
     todayDateText: document.querySelector("#todayDateText"),
+    todayHeroCard: document.querySelector("#todayHeroCard"),
     emotionCard: document.querySelector("#emotionCard"),
     todayBrowserCard: document.querySelector("#todayBrowserCard"),
     todayPanoramaCard: document.querySelector("#todayPanoramaCard"),
@@ -2448,6 +2507,7 @@ function cacheNodes() {
     knowledgeList: document.querySelector("#knowledgeList"),
     knowledgeFilterCard: document.querySelector("#knowledgeFilterCard"),
     contactList: document.querySelector("#contactList"),
+    contactsMascotCard: document.querySelector("#contactsMascotCard"),
     entryDialog: document.querySelector("#entryDialog"),
     entryForm: document.querySelector("#entryForm"),
     dialogTitle: document.querySelector("#dialogTitle"),

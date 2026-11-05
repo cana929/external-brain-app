@@ -1,4 +1,4 @@
-const CACHE_NAME = "external-brain-v4";
+const CACHE_NAME = "external-brain-v5";
 const ASSETS = [
   "./",
   "./index.html",
@@ -6,7 +6,17 @@ const ASSETS = [
   "./app.js",
   "./manifest.webmanifest",
   "./icons/icon-192.svg",
-  "./icons/icon-512.svg"
+  "./icons/icon-512.svg",
+  "./assets/emotion-1.jpg",
+  "./assets/emotion-2.jpg",
+  "./assets/emotion-3.jpg",
+  "./assets/emotion-4.jpg",
+  "./assets/emotion-5.jpg",
+  "./assets/emotion-6.jpg",
+  "./assets/cat-mood.jpg",
+  "./assets/habit-mascot.jpg",
+  "./assets/review-mascot.jpg",
+  "./assets/people-mascot.jpg"
 ];
 
 self.addEventListener("install", (event) => {
