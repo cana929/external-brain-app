@@ -81,6 +81,7 @@ function createDefaultState() {
     trash: [],
     backupLogs: [],
     boards: { study: [], work: [], life: [], other: [] },
+    weeklyReviews: {},
     experienceCategories: []
   };
 }
@@ -1014,9 +1015,99 @@ function renderBoardSearchResults() {
   });
 }
 
+/* ============ 周度复盘 ============ */
+
+const WEEKDAY_LABELS = ["周一", "周二", "周三", "周四", "周五", "周六", "周日"];
+
+function getWeekMonday(dateString) {
+  const [year, month, day] = dateString.split("-").map(Number);
+  const date = new Date(year, month - 1, day);
+  const weekday = date.getDay() || 7; // 周一=1 … 周日=7
+  date.setDate(date.getDate() - (weekday - 1));
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+}
+
+function formatShortDate(dateString) {
+  const [, month, day] = dateString.split("-").map(Number);
+  return `${String(month).padStart(2, "0")}.${String(day).padStart(2, "0")}`;
+}
+
+function weekdayLabelOf(dateString) {
+  const [year, month, day] = dateString.split("-").map(Number);
+  const weekday = new Date(year, month - 1, day).getDay() || 7;
+  return WEEKDAY_LABELS[weekday - 1];
+}
+
+function renderWeeklyReview() {
+  const today = localDateString();
+  const monday = getWeekMonday(today);
+  const weekLabel = `${formatShortDate(monday)} – ${formatShortDate(addDays(monday, 6))}`;
+  const weekKey = monday;
+  const summary = app.state.weeklyReviews?.[weekKey] || { content: "", updatedAt: "" };
+
+  const days = [];
+  for (let offset = 6; offset >= 0; offset -= 1) {
+    days.push(addDays(today, -offset));
+  }
+
+  const rows = days.map((date) => {
+    const emotion = getEmotionByDate(date);
+    const records = app.state.records.filter((item) => item.date === date);
+    return `
+      <div class="weekly-row">
+        <div class="weekly-date">
+          <span class="weekly-daynum">${formatShortDate(date)}</span>
+          <span class="weekly-weekday">${weekdayLabelOf(date)}</span>
+          ${emotion ? `<span class="weekly-face">${emotion.face}</span>` : ""}
+        </div>
+        <div class="weekly-body">
+          ${records.length ? records.map((record) => `
+            <div class="weekly-record">
+              <span class="weekly-record-text">${escapeHtml(record.content)}</span>
+              <span class="timestamp">${formatTime(record.createdAt)}</span>
+            </div>
+          `).join("") : `<span class="weekly-empty">无记录</span>`}
+        </div>
+      </div>
+    `;
+  }).join("");
+
+  nodes.weeklyReviewCard.innerHTML = `
+    <div class="section-head">
+      <h2>周度复盘</h2>
+      <span class="pill">最近 7 天</span>
+    </div>
+    <div class="weekly-week-range">${weekLabel} · ${weekdayLabelOf(today)}</div>
+    <div class="weekly-list">
+      ${rows}
+    </div>
+    <div class="weekly-summary">
+      <div class="section-head">
+        <h3>周度复盘小结</h3>
+        <button class="chip-button" id="weeklySaveBtn">保存小结</button>
+      </div>
+      <textarea id="weeklySummaryInput" class="weekly-summary-input" rows="4" placeholder="回顾这七天：收获、问题、下一步……">${escapeHtml(summary.content)}</textarea>
+      <p class="note" id="weeklySaveNote">${summary.updatedAt ? `已保存于 ${formatTime(summary.updatedAt)}` : "写下本周小结，自动保存在本机，跨月不丢。"}</p>
+    </div>
+  `;
+  document.querySelector("#weeklySaveBtn").addEventListener("click", () => {
+    const content = document.querySelector("#weeklySummaryInput").value.trim();
+    app.state.weeklyReviews = app.state.weeklyReviews || {};
+    if (content) {
+      app.state.weeklyReviews[weekKey] = { content, updatedAt: new Date().toISOString() };
+    } else {
+      delete app.state.weeklyReviews[weekKey];
+    }
+    saveState();
+    showToast(content ? "周度小结已保存" : "已清空本周小结");
+    renderWeeklyReview();
+  });
+}
+
 /* ============ 复盘日历 ============ */
 
 function renderReviews() {
+  renderWeeklyReview();
   renderReviewCalendar();
   renderReviewDay();
 }
@@ -1041,7 +1132,7 @@ function renderReviewCalendar() {
     const { emotion, records } = getDayCalendarData(date);
     const isToday = date === localDateString();
     const isSelected = date === app.calendarSelectedDate;
-    const style = emotion ? `style="--cell-tint:${emotion.color}66;background:linear-gradient(180deg,${emotion.color}22,rgba(255,255,255,.9))"` : "";
+    const style = emotion ? `style="--cell-tint:${emotion.color}66;background:linear-gradient(180deg,${emotion.color}52,rgba(13,18,34,.25))"` : "";
     cells.push(`
       <button class="cal-cell ${isToday ? "is-today" : ""} ${isSelected ? "is-selected" : ""} ${records.length ? "has-content" : ""}" data-cal-date="${date}" ${style}>
         <span class="cal-day-num">${day}</span>
@@ -1194,7 +1285,7 @@ function renderEmotionCard() {
   const todayEmotion = getEmotionByDate(app.selectedDate);
   const emotion = todayEmotion || emotionOptions[3];
   const trend = getEmotionTrend(app.emotionWindowDays);
-  nodes.emotionCard.style.background = `linear-gradient(135deg, ${emotion.color} 0%, rgba(255,255,255,.92) 100%)`;
+  nodes.emotionCard.style.background = `linear-gradient(135deg, ${emotion.color}59 0%, rgba(14,19,36,.92) 62%)`;
   nodes.emotionCard.innerHTML = `
     <div class="section-head">
       <h2>${app.selectedDate === localDateString() ? "今日情绪" : "当天情绪"}</h2>
@@ -2350,6 +2441,7 @@ function cacheNodes() {
     boardSearchCard: document.querySelector("#boardSearchCard"),
     boardCard: document.querySelector("#boardCard"),
     reviewCalendarCard: document.querySelector("#reviewCalendarCard"),
+    weeklyReviewCard: document.querySelector("#weeklyReviewCard"),
     reviewDayCard: document.querySelector("#reviewDayCard"),
     habitOverviewCard: document.querySelector("#habitOverviewCard"),
     habitList: document.querySelector("#habitList"),
