@@ -1,4 +1,4 @@
-const CACHE_NAME = "external-brain-v6";
+const CACHE_NAME = "external-brain-v7";
 const ASSETS = [
   "./",
   "./index.html",
@@ -20,7 +20,15 @@ const ASSETS = [
 ];
 
 self.addEventListener("install", (event) => {
-  event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS)));
+  event.waitUntil(
+    caches.open(CACHE_NAME).then((cache) =>
+      Promise.all(
+        ASSETS.map((url) =>
+          cache.add(url).catch(() => null)
+        )
+      )
+    )
+  );
   self.skipWaiting();
 });
 
@@ -55,12 +63,18 @@ self.addEventListener("fetch", (event) => {
           caches.open(CACHE_NAME).then((cache) => cache.put(event.request, cloned));
           return response;
         })
-        .catch(() => caches.match(event.request).then((cached) => cached || caches.match("./index.html")))
+        .catch(() =>
+          caches
+            .match(event.request, { ignoreSearch: true })
+            .then((cached) => cached || caches.match("./index.html", { ignoreSearch: true }))
+        )
     );
     return;
   }
 
   event.respondWith(
-    caches.match(event.request).then((cached) => cached || fetch(event.request))
+    caches
+      .match(event.request, { ignoreSearch: true })
+      .then((cached) => cached || fetch(event.request))
   );
 });
