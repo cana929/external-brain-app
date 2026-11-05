@@ -1,4 +1,4 @@
-const CACHE_NAME = "external-brain-v2";
+const CACHE_NAME = "external-brain-v3";
 const ASSETS = [
   "./",
   "./index.html",
