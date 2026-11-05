@@ -1305,7 +1305,7 @@ function renderTodayHero() {
         <h2>把不起眼的小事，攒成喜欢的日子。</h2>
         <p class="subtle">一天一点点，慢慢积攒。今天也好好过。</p>
       </div>
-      <img class="hero-cat" src="./assets/cat-mood.jpg" alt="猫咪心情">
+      <img class="hero-img" src="./assets/hero-figure.jpg" alt="今日相伴">
     </div>
   `;
 }

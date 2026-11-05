@@ -1997,13 +1997,13 @@ input:focus, textarea:focus, select:focus, .board-edit-input:focus, .weekly-summ
 .hero-inner { display: flex; align-items: center; gap: 16px; }
 .hero-text { flex: 1; min-width: 0; }
 .hero-text h2 { font-size: 19px; line-height: 1.45; color: var(--text); margin: 8px 0 4px; }
-.hero-cat {
+.hero-img {
   width: 96px;
   height: 128px;
   object-fit: cover;
-  object-position: top center;
+  object-position: center 20%;
   border-radius: 18px;
-  box-shadow: 0 8px 22px rgba(127, 200, 232, 0.30);
+  box-shadow: 0 8px 22px rgba(150, 128, 118, 0.28);
   border: 2px solid #FFFFFF;
   flex: none;
 }

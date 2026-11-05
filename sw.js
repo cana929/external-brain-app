@@ -1,4 +1,4 @@
-const CACHE_NAME = "external-brain-v5";
+const CACHE_NAME = "external-brain-v6";
 const ASSETS = [
   "./",
   "./index.html",
@@ -13,7 +13,7 @@ const ASSETS = [
   "./assets/emotion-4.jpg",
   "./assets/emotion-5.jpg",
   "./assets/emotion-6.jpg",
-  "./assets/cat-mood.jpg",
+  "./assets/hero-figure.jpg",
   "./assets/habit-mascot.jpg",
   "./assets/review-mascot.jpg",
   "./assets/people-mascot.jpg"
