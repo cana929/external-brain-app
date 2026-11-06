@@ -7,7 +7,7 @@
   <title>我的外置大脑</title>
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="icon" href="./icons/icon-192.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="./styles.css?v=4.1">
+  <link rel="stylesheet" href="./styles.css?v=4.2">
 </head>
 <body>
   <div class="app-shell">
@@ -30,13 +30,7 @@
           <article class="card" id="todayBrowserCard"></article>
           <article class="card" id="todayPanoramaCard"></article>
           <article class="card" id="todayQuickHabits"></article>
-          <article class="card">
-            <div class="section-head">
-              <h2>今日记录</h2>
-              <button class="text-button" data-open-modal="record">新增</button>
-            </div>
-            <div id="todayTimeline" class="timeline"></div>
-          </article>
+          <article class="card" id="todayRecordsCard"></article>
         </div>
       </section>
 
@@ -196,6 +190,6 @@
 
   <div id="toast" class="toast hidden" aria-live="polite"></div>
 
-  <script src="./app.js?v=4.1" defer></script>
+  <script src="./app.js?v=4.2" defer></script>
 </body>
 </html>

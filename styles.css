@@ -2154,3 +2154,46 @@ input:focus, textarea:focus, select:focus, .board-edit-input:focus, .weekly-summ
 .board-search-row input { background: #FFFDF9; border: 1.5px solid var(--border-strong); border-radius: 999px; color: var(--text); }
 .board-add-row input { background: #FFFDF9; border: 1.5px solid var(--border-strong); border-radius: 999px; color: var(--text); }
 .weekday-cell, .weekday-head { color: var(--text-sub); }
+/* ============ v4.2 每日记录：上午 / 下午 / 晚上 分区 ============ */
+.record-slots { display: flex; flex-direction: column; gap: 12px; margin-top: 8px; }
+.record-slot {
+  background: #FFFDF9;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px 12px;
+}
+.record-slot-head { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.slot-badge {
+  display: inline-block;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.7;
+  padding: 0 10px;
+  border-radius: 999px;
+}
+.slot-morning { background: #FBF1D9; color: #B2862C; }
+.slot-afternoon { background: #FCEADF; color: #BC6C4B; }
+.slot-evening { background: #E7EEFA; color: #5A7199; }
+.slot-range { font-size: 12px; color: var(--text-sub); }
+.slot-state { margin-left: auto; font-size: 12px; color: var(--text-sub); white-space: nowrap; }
+.slot-input {
+  width: 100%;
+  box-sizing: border-box;
+  display: block;
+  min-height: 68px;
+  padding: 10px 12px;
+  background: #FFFFFF;
+  border: 1.5px solid var(--border-strong);
+  border-radius: 12px;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 14px;
+  line-height: 1.65;
+  resize: vertical;
+}
+.slot-input:focus {
+  border-color: var(--accent);
+  box-shadow: var(--glow);
+  outline: none;
+}
+.slot-input::placeholder { color: #CBB9AD; }

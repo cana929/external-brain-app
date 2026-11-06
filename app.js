@@ -27,6 +27,35 @@ const BOARD_DEFS = [
   { key: "other", label: "其他", icon: "📌" }
 ];
 
+/* 每日记录按时间段分区 */
+const SLOT_DEFS = [
+  { key: "morning", label: "上午", range: "06:00 – 12:00", placeholder: "上午做了什么，随手记一笔…" },
+  { key: "afternoon", label: "下午", range: "12:00 – 18:00", placeholder: "下午的进展、想法、状态…" },
+  { key: "evening", label: "晚上", range: "18:00 – 次日 06:00", placeholder: "晚上的复盘、心情、明日打算…" }
+];
+
+function slotKeyOfHour(hour) {
+  if (hour >= 6 && hour < 12) {
+    return "morning";
+  }
+  if (hour >= 12 && hour < 18) {
+    return "afternoon";
+  }
+  return "evening";
+}
+
+function slotKeyOfRecord(record) {
+  const parsed = new Date(record?.createdAt);
+  if (Number.isNaN(parsed.getTime())) {
+    return "morning";
+  }
+  return slotKeyOfHour(parsed.getHours());
+}
+
+function slotLabelOf(key) {
+  return (SLOT_DEFS.find((item) => item.key === key) || SLOT_DEFS[0]).label;
+}
+
 const app = {
   state: null,
   activeScreen: "today",
@@ -94,7 +123,7 @@ function normalizeState(data) {
   const normalized = {
     ...defaults,
     ...data,
-    schemaVersion: Math.max(5, Number(data?.schemaVersion || 1)),
+    schemaVersion: Math.max(6, Number(data?.schemaVersion || 1)),
     settings: { ...defaults.settings, ...(data.settings || {}) },
     meta: { ...defaults.meta, ...(data.meta || {}) }
   };
@@ -105,8 +134,12 @@ function normalizeState(data) {
     version: 1,
     tags: [],
     relatedBundleId: "",
-    relatedHabitId: ""
-  });
+    relatedHabitId: "",
+    slot: ""
+  }).map((record) => ({
+    ...record,
+    slot: record.slot || slotKeyOfRecord(record)
+  }));
   normalized.emotions = normalizeEntityList(normalized.emotions, {
     updatedAt: "",
     deletedAt: "",
@@ -440,6 +473,7 @@ function trashKindLabel(kind) {
 }
 
 function changeSelectedDate(delta) {
+  flushSlotDrafts();
   app.selectedDate = addDays(app.selectedDate, delta);
   renderAll();
 }
@@ -1241,7 +1275,7 @@ function renderReviewDay() {
       ${records.length ? records.map((record) => `
         <div class="timeline-item">
           <div class="list-item-head">
-            <strong>${escapeHtml(record.content)}</strong>
+            <strong><span class="slot-badge slot-${record.slot || slotKeyOfRecord(record)}">${slotLabelOf(record.slot || slotKeyOfRecord(record))}</span> ${escapeHtml(record.content)}</strong>
             <span class="timestamp">${formatTime(record.createdAt)}</span>
           </div>
           ${record.tags.length ? `<p>${record.tags.map((tag) => `<span class="pill">${escapeHtml(tag)}</span>`).join(" ")}</p>` : ""}
@@ -1285,7 +1319,7 @@ function renderAll() {
   renderTodayBrowser();
   renderDayPanorama();
   renderTodayHabits();
-  renderTimeline();
+  renderTodayRecords();
   renderProjects();
   renderReviews();
   renderHabits();
@@ -1500,28 +1534,138 @@ function renderTodayHabits() {
   });
 }
 
-function renderTimeline() {
-  const items = app.state.records.filter((item) => item.date === app.selectedDate);
-  renderCollection(nodes.todayTimeline, items, (record) => {
-    const habit = app.state.habits.find((item) => item.id === record.relatedHabitId);
-    return `
-      <div class="timeline-item">
-        <div class="list-item-head">
-          <strong>${escapeHtml(record.content)}</strong>
-          <span class="timestamp">${formatTime(record.createdAt)}</span>
-        </div>
-        ${record.tags.length ? `<p>${record.tags.map((tag) => `<span class="pill">${escapeHtml(tag)}</span>`).join(" ")}</p>` : ""}
-        <p class="item-meta">${habit ? `习惯：${escapeHtml(habit.name)}` : "未关联其他内容"}</p>
-        <div class="inline-actions tight">
-          <button class="chip-button" data-record-manage="edit" data-record-id="${record.id}">编辑</button>
-          <button class="chip-button" data-record-manage="delete" data-record-id="${record.id}">删除</button>
-        </div>
-      </div>
-    `;
+/* ---- 每日记录：上午 / 下午 / 晚上 分区，写完自动保存 ---- */
+const slotDrafts = new Map();
+
+function recordsOfSlot(date, slotKey) {
+  return app.state.records.filter(
+    (item) => item.date === date && (item.slot || slotKeyOfRecord(item)) === slotKey
+  );
+}
+
+function slotSavedLabel(items) {
+  const latest = items.reduce((stamp, item) => {
+    const value = item.updatedAt || item.createdAt || "";
+    return value > stamp ? value : stamp;
+  }, "");
+  return latest ? `已保存 ${formatTime(latest)}` : "还没写";
+}
+
+function renderTodayRecords() {
+  const date = app.selectedDate;
+  const isToday = date === localDateString();
+  nodes.todayRecordsCard.innerHTML = `
+    <div class="section-head">
+      <h2>${isToday ? "今日记录" : `${date} 的记录`}</h2>
+      <span class="subtle">写完自动保存</span>
+    </div>
+    <div class="record-slots">
+      ${SLOT_DEFS.map((slot) => {
+        const items = recordsOfSlot(date, slot.key);
+        const text = items.map((item) => item.content).filter(Boolean).join("\n");
+        return `
+          <div class="record-slot" data-slot-wrap="${slot.key}">
+            <div class="record-slot-head">
+              <span class="slot-badge slot-${slot.key}">${slot.label}</span>
+              <span class="slot-range">${slot.range}</span>
+              <span class="slot-state" data-slot-state="${slot.key}">${slotSavedLabel(items)}</span>
+            </div>
+            <textarea class="slot-input" data-slot-input="${slot.key}" data-slot-date="${date}" rows="3" placeholder="${slot.placeholder}">${escapeHtml(text)}</textarea>
+          </div>
+        `;
+      }).join("")}
+    </div>
+  `;
+  nodes.todayRecordsCard.querySelectorAll("[data-slot-input]").forEach((textarea) => {
+    textarea.addEventListener("input", () => {
+      queueSlotSave(textarea.dataset.slotDate, textarea.dataset.slotInput, textarea.value);
+      updateSlotState(textarea.dataset.slotInput, "输入中…");
+    });
+    textarea.addEventListener("blur", () => {
+      flushSlotDrafts();
+    });
   });
-  nodes.todayTimeline.querySelectorAll("[data-record-manage]").forEach((button) => {
-    button.addEventListener("click", () => handleRecordManage(button.dataset.recordManage, button.dataset.recordId));
+}
+
+function updateSlotState(slotKey, text) {
+  const el = nodes.todayRecordsCard?.querySelector(`[data-slot-state="${slotKey}"]`);
+  if (el) {
+    el.textContent = text;
+  }
+}
+
+function queueSlotSave(date, slotKey, text) {
+  const key = `${date}|${slotKey}`;
+  const existing = slotDrafts.get(key);
+  if (existing?.timer) {
+    clearTimeout(existing.timer);
+  }
+  const timer = setTimeout(() => {
+    flushSlotDraft(key);
+  }, 600);
+  slotDrafts.set(key, { date, slotKey, text, timer });
+}
+
+function flushSlotDrafts() {
+  [...slotDrafts.keys()].forEach((key) => {
+    flushSlotDraft(key);
   });
+}
+
+async function flushSlotDraft(key) {
+  const draft = slotDrafts.get(key);
+  if (!draft) {
+    return;
+  }
+  if (draft.timer) {
+    clearTimeout(draft.timer);
+  }
+  slotDrafts.delete(key);
+  await saveSlotRecord(draft.date, draft.slotKey, draft.text);
+  if (draft.date === app.selectedDate) {
+    updateSlotState(draft.slotKey, slotSavedLabel(recordsOfSlot(draft.date, draft.slotKey)));
+  }
+  renderDayPanorama();
+}
+
+async function saveSlotRecord(date, slotKey, text) {
+  const sameSlot = recordsOfSlot(date, slotKey);
+  const content = String(text || "").replace(/^\s+|\s+$/g, "");
+  const now = new Date().toISOString();
+  if (!content) {
+    if (sameSlot.length) {
+      app.state.records = app.state.records.filter((item) => !sameSlot.includes(item));
+      await saveState();
+    }
+    return;
+  }
+  if (!sameSlot.length) {
+    app.state.records.unshift({
+      id: uid(),
+      createdAt: now,
+      date,
+      slot: slotKey,
+      content,
+      tags: [],
+      relatedBundleId: "",
+      relatedHabitId: "",
+      updatedAt: now,
+      version: 1
+    });
+    await saveState();
+    return;
+  }
+  const first = sameSlot[0];
+  const rest = sameSlot.slice(1);
+  first.content = content;
+  first.slot = slotKey;
+  first.updatedAt = now;
+  first.version = Number(first.version || 1) + 1;
+  if (rest.length) {
+    /* 同一时段曾有多条记录：文本已合并进第一条，避免重复展示 */
+    app.state.records = app.state.records.filter((item) => !rest.includes(item));
+  }
+  await saveState();
 }
 
 async function handleRecordManage(action, recordId) {
@@ -1893,6 +2037,14 @@ function openEntryModal(type, preset = {}) {
         <input type="hidden" name="id" value="${preset.id || ""}">
         <input type="hidden" name="date" value="${preset.date || app.selectedDate}">
         <label><span>内容</span><textarea name="content" required>${escapeHtml(preset.content || "")}</textarea></label>
+        <label><span>时段</span>
+          <select name="slot">
+            ${SLOT_DEFS.map((slot) => {
+              const fallback = preset.slot || slotKeyOfHour(new Date().getHours());
+              return `<option value="${slot.key}" ${fallback === slot.key ? "selected" : ""}>${slot.label}（${slot.range}）</option>`;
+            }).join("")}
+          </select>
+        </label>
         <label><span>标签（逗号分隔）</span><input name="tags" placeholder="学习, 灵感" value="${escapeHtml((preset.tags || []).join(", "))}"></label>
         <label><span>关联习惯</span>
           <select name="relatedHabitId">
@@ -2000,6 +2152,7 @@ async function handleDialogSubmit(event) {
       const id = String(formData.get("id") || "");
       const payload = {
         date: String(formData.get("date") || app.selectedDate),
+        slot: String(formData.get("slot") || slotKeyOfHour(new Date().getHours())),
         content: String(formData.get("content")).trim(),
         tags: splitTags(formData.get("tags")),
         relatedHabitId: String(formData.get("relatedHabitId") || ""),
@@ -2496,7 +2649,7 @@ function cacheNodes() {
     todayBrowserCard: document.querySelector("#todayBrowserCard"),
     todayPanoramaCard: document.querySelector("#todayPanoramaCard"),
     todayQuickHabits: document.querySelector("#todayQuickHabits"),
-    todayTimeline: document.querySelector("#todayTimeline"),
+    todayRecordsCard: document.querySelector("#todayRecordsCard"),
     boardSearchCard: document.querySelector("#boardSearchCard"),
     boardCard: document.querySelector("#boardCard"),
     reviewCalendarCard: document.querySelector("#reviewCalendarCard"),
@@ -2533,6 +2686,7 @@ function cacheNodes() {
 }
 
 function setActiveScreen(screenName) {
+  flushSlotDrafts();
   app.activeScreen = screenName;
   document.querySelectorAll(".screen").forEach((screen) => {
     screen.classList.toggle("is-active", screen.dataset.screen === screenName);
