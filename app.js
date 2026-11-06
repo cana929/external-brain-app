@@ -1435,7 +1435,7 @@ function renderDayPanorama() {
       </div>
       <div class="detail-tile">
         <span class="item-meta">情绪</span>
-        <strong>${dayEmotion ? `${dayEmotion.face} ${dayEmotion.label}` : "未记录"}</strong>
+        <strong>${dayEmotion ? `<img class="mini-face" src="${dayEmotion.img}" alt="${dayEmotion.label}"> ${dayEmotion.label}` : "未记录"}</strong>
         <p class="item-meta">${dayEmotion?.note || "当天还没有情绪备注"}</p>
       </div>
       <div class="detail-tile">
