@@ -694,6 +694,96 @@ async function addBoardTodo(content) {
   renderProjects();
 }
 
+/* ============ cana 待办导入（只追加四板块，不动其它数据） ============ */
+
+function normalizeBoardKey(raw) {
+  const key = String(raw || "").trim().toLowerCase();
+  const map = {
+    study: "study", 学习: "study", 学业: "study", 课程: "study",
+    work: "work", 工作: "work", 班务: "work", 学生会: "work", 双创: "work",
+    life: "life", 生活: "life",
+    other: "other", 其他: "other", 其它: "other", misc: "other"
+  };
+  return map[key] || "other";
+}
+
+function collectImportItems(parsed) {
+  const asArray = Array.isArray(parsed) ? parsed : (parsed?.todos || parsed?.items || null);
+  if (Array.isArray(asArray)) {
+    return asArray.map((item) => ({
+      content: (typeof item === "string" ? item : String(item?.content || item?.text || item?.title || "")).trim(),
+      board: normalizeBoardKey(typeof item === "string" ? "other" : (item?.board || item?.category || item?.板块)),
+      done: typeof item === "object" && item?.done === true
+    })).filter((item) => item.content);
+  }
+  const boards = parsed?.boards || {};
+  const list = [];
+  Object.keys(boards).forEach((key) => {
+    const entries = Array.isArray(boards[key]) ? boards[key] : [];
+    entries.forEach((item) => {
+      const content = (typeof item === "string" ? item : String(item?.content || item?.text || "")).trim();
+      if (!content) return;
+      list.push({
+        content,
+        board: normalizeBoardKey((typeof item === "object" && item?.board) || key),
+        done: typeof item === "object" && item?.done === true
+      });
+    });
+  });
+  return list;
+}
+
+async function importTodosFromFile(event) {
+  const file = event.target.files?.[0];
+  if (!file) return;
+  try {
+    const parsed = JSON.parse(await file.text());
+    const items = collectImportItems(parsed);
+    if (!items.length) {
+      nodes.settingsNote.textContent = "这个文件里没有可导入的待办。";
+      showToast("没有可导入的待办");
+      return;
+    }
+    const existing = new Set();
+    BOARD_DEFS.forEach((board) => {
+      if (!Array.isArray(app.state.boards[board.key])) app.state.boards[board.key] = [];
+      app.state.boards[board.key].forEach((item) => existing.add(String(item.content || "").trim()));
+    });
+    let added = 0;
+    let skipped = 0;
+    const now = new Date().toISOString();
+    items.forEach((item) => {
+      const text = item.content.trim();
+      const key = item.board;
+      if (existing.has(text)) {
+        skipped += 1;
+        return;
+      }
+      existing.add(text);
+      app.state.boards[key].push({
+        id: uid(),
+        content: text,
+        done: item.done === true,
+        createdAt: now,
+        updatedAt: now,
+        version: 1
+      });
+      added += 1;
+    });
+    await saveState();
+    renderAll();
+    const note = `已导入 ${added} 条待办${skipped ? `，跳过 ${skipped} 条重复` : ""}。`;
+    nodes.settingsNote.textContent = note;
+    showToast(note);
+  } catch (error) {
+    nodes.settingsNote.textContent = "导入失败：文件不是合法 JSON，或格式不对。";
+    showToast("导入失败，请检查文件格式");
+    console.error(error);
+  } finally {
+    event.target.value = "";
+  }
+}
+
 async function setBoardDone(id, done) {
   const item = getBoardList().find((entry) => entry.id === id);
   if (!item) {
@@ -2676,6 +2766,7 @@ function cacheNodes() {
     autoBackupDays: document.querySelector("#autoBackupDays"),
     settingsNote: document.querySelector("#settingsNote"),
     restoreInput: document.querySelector("#restoreInput"),
+    importTodosInput: document.querySelector("#importTodosInput"),
     restoreLastDeletedBtn: document.querySelector("#restoreLastDeletedBtn"),
     clearTrashBtn: document.querySelector("#clearTrashBtn"),
     toast: document.querySelector("#toast"),
@@ -2727,6 +2818,7 @@ function bindGlobalEvents() {
   nodes.restoreLastDeletedBtn.addEventListener("click", restoreLastDeleted);
   nodes.clearTrashBtn.addEventListener("click", clearTrash);
   nodes.restoreInput.addEventListener("change", restoreFromFile);
+  nodes.importTodosInput.addEventListener("change", importTodosFromFile);
   nodes.searchInput.addEventListener("input", (event) => {
     app.searchQuery = event.target.value.trim();
     renderSearchResults();

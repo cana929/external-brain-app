@@ -142,6 +142,12 @@
           </label>
         </div>
         <div class="button-row">
+          <label class="file-button">
+            <input id="importTodosInput" type="file" accept=".json,application/json">
+            <span>导入待办（cana）</span>
+          </label>
+        </div>
+        <div class="button-row">
           <button type="button" class="secondary-button" id="restoreLastDeletedBtn">恢复最近删除</button>
           <button type="button" class="secondary-button" id="clearTrashBtn">清空回收站</button>
         </div>
@@ -190,6 +196,6 @@
 
   <div id="toast" class="toast hidden" aria-live="polite"></div>
 
-  <script src="./app.js?v=4.2" defer></script>
+  <script src="./app.js?v=4.3" defer></script>
 </body>
 </html>
